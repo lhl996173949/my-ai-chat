@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自适应用能控制智能体 · 生产联动</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif;
+        }
+        body {
+            background: #0a0e17;
+            color: #e2e8f0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        /* ===== 顶部通栏 Header（独立、横跨全宽） ===== */
+        .app-header {
+            background: #141e2b;
+            border-radius: 16px;
+            padding: 16px 28px;
+            border: 1px solid #253544;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        .app-header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #e2e8f0;
+            letter-spacing: 0.5px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .mode-badge {
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 14px;
+            background: #16a34a;
+            color: white;
+            box-shadow: 0 0 15px rgba(22, 163, 74, 0.3);
+        }
+        .mode-badge.standby {
+            background: #b45309;
+            box-shadow: 0 0 15px rgba(180, 83, 9, 0.3);
+        }
+        .mode-badge.transition {
+            background: #d97706;
+            box-shadow: 0 0 15px rgba(217, 119, 6, 0.3);
+        }
+        .header-clock {
+            color: #94a3b8;
+            font-size: 14px;
+            font-weight: 500;
+            min-width: 70px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-header {
+            padding: 6px 18px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #253544;
+            color: #cbd5e1;
+        }
+        .btn-header:hover {
+            background: #33475b;
+        }
+        .btn-header.primary {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-header.primary:hover {
+            background: #1d4ed8;
+        }
+        .btn-header.danger {
+            background: #b91c1c;
+            color: white;
+        }
+        .btn-header.danger:hover {
+            background: #991b1b;
+        }
+
+        /* ===== 主体网格 ===== */
+        .app-body {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 20px;
+            height: calc(100vh - 110px);
+        }
+
+        /* ===== 左侧栏 ===== */
+        .sidebar {
+            background: #141e2b;
+            border-radius: 16px;
+            padding: 24px 20px;
+            border: 1px solid #253544;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            gap: 14px;
+        }
+
+        /* 工厂设备区域 — 顶部增加间距，实现“往下调整” */
+        .factory-section {
+            margin-top: 8px;
+        }
+        .factory-section .section-title {
+            font-size: 15px;
+            color: #94a3b8;
+            border-bottom: 1px solid #253544;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .factory-list {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 200px;
+            margin-top: 6px;
+        }
+        .factory-item {
+            padding: 12px 14px;
+            background: #1a2634;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            transition: 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .factory-item.active {
+            border-left-color: #3b82f6;
+            background: #1e2d3f;
+        }
+        .factory-item:hover {
+            background: #1e2d3f;
+        }
+        .factory-item .name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .factory-item .badge {
+            font-size: 11px;
+            background: #253544;
+            padding: 2px 12px;
+            border-radius: 20px;
+            color: #94a3b8;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #253544;
+            color: #cbd5e1;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        .btn-danger {
+            background: #b91c1c;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #991b1b;
+        }
+        .btn-sm {
+            padding: 5px 14px;
+            font-size: 12px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
+
+        /* ===== 参数面板（已移除待机开关） ===== */
+        .param-group {
+            background: #101a26;
+            border-radius: 12px;
+            padding: 16px 16px;
+            flex-shrink: 0;
+            overflow-y: auto;
+            margin-top: 4px;
+        }
+        .param-group .group-title {
+            font-size: 15px;
+            color: #94a3b8;
+            border-bottom: 1px solid #253544;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+            flex-shrink: 0;
+        }
+        .param-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .param-row label {
+            width: 90px;
+            font-size: 13px;
+            color: #94a3b8;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: help;
+        }
+        .param-row label .info-icon {
+            color: #475569;
+            font-size: 12px;
+            border: 1px solid #475569;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .param-row input[type="range"] {
+            flex: 1;
+            min-width: 80px;
+            -webkit-appearance: none;
+            background: #253544;
+            height: 5px;
+            border-radius: 4px;
+            outline: none;
+        }
+        .param-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .param-row input[type="number"] {
+            width: 64px;
+            background: #1a2634;
+            border: 1px solid #253544;
+            border-radius: 6px;
+            padding: 4px 6px;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+        }
+        .param-row input[type="number"]:focus {
+            border-color: #3b82f6;
+            outline: none;
+        }
+        .param-row .val {
+            width: 52px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 14px;
+            color: #e2e8f0;
+        }
+        .text-muted {
+            color: #7b8ca3;
+            font-size: 13px;
+        }
+
+        /* ===== 右侧主区域 ===== */
+        .main {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            overflow: hidden;
+        }
+        .top-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: #141e2b;
+            border: 1px solid #253544;
+            border-radius: 16px;
+            padding: 22px 24px;
+        }
+        .card-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #7b8ca3;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #1f2c3b;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .output-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .output-item {
+            background: #101a26;
+            border-radius: 10px;
+            padding: 12px 14px;
+            text-align: center;
+        }
+        .output-item .label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .output-item .value {
+            font-size: 26px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+        .output-item .value .unit {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+        .progress {
+            height: 8px;
+            background: #1f2c3b;
+            border-radius: 10px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 20px;
+            min-height: 0;
+        }
+        .chart-container {
+            background: #0d1420;
+            border-radius: 12px;
+            padding: 10px;
+            border: 1px solid #1f2c3b;
+        }
+        #psychroChart {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+            background: #0d1420;
+        }
+
+        /* ===== 决策树 ===== */
+        .decision-tree {
+            background: #0d1420;
+            padding: 14px 18px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px 6px;
+            font-size: 14px;
+            border-left: 4px solid #2563eb;
+            margin-top: 12px;
+        }
+        .dt-node {
+            background: #1a2634;
+            padding: 4px 16px;
+            border-radius: 30px;
+            border: 1px solid #2a3a4a;
+        }
+        .dt-result {
+            padding: 4px 20px;
+            border-radius: 30px;
+            font-weight: 700;
+            background: #16a34a;
+            color: white;
+        }
+        .dt-result.standby {
+            background: #b45309;
+        }
+        .dt-result.transition {
+            background: #d97706;
+        }
+
+        .event-log {
+            list-style: none;
+            font-size: 13px;
+            color: #94a3b8;
+            max-height: 110px;
+            overflow-y: auto;
+            margin-top: 8px;
+        }
+        .event-log li {
+            padding: 5px 0;
+            border-bottom: 1px solid #1a2634;
+        }
+
+        .flex {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .mt-2 {
+            margin-top: 14px;
+        }
+        .tag {
+            display: inline-block;
+            padding: 3px 14px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .tag-green {
+            background: #0f2e1f;
+            color: #4ade80;
+        }
+        .tag-red {
+            background: #3b1a1a;
+            color: #f87171;
+        }
+        .tag-yellow {
+            background: #3b341a;
+            color: #fbbf24;
+        }
+        .tag-blue {
+            background: #142b45;
+            color: #60a5fa;
+        }
+
+        .info-box {
+            background: #0d1420;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #94a3b8;
+            border-left: 3px solid #475569;
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+        .info-box strong {
+            color: #e2e8f0;
+        }
+
+        .boundary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #1a2634;
+        }
+        .boundary-item:last-of-type {
+            border-bottom: none;
+        }
+        .boundary-item .label {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        .boundary-item .value {
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 1200px) {
+            .app-body {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .top-row {
+                grid-template-columns: 1fr;
+            }
+            .bottom-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 600px) {
+            .output-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .param-row label {
+                width: 70px;
+            }
+            .sidebar {
+                padding: 16px;
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header-right {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== 顶部通栏（独立、横跨全宽） ===== -->
+<div class="app-header">
+    <h1>自适应用能控制智能体 · 生产联动</h1>
+    <div class="header-right">
+        <div class="header-status">
+            <span id="statusBadge" class="mode-badge">正常生产</span>
+            <span class="header-clock" id="headerClock">16:38:25</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn-header danger" id="forceStandbyBtn">强制待机</button>
+            <button class="btn-header primary" id="resetProductionBtn">恢复生产</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 主体 ===== -->
+<div class="app-body">
+
+    <!-- 左侧栏 -->
+    <div class="sidebar">
+        <!-- 工厂设备区域 — 顶部增加间距（margin-top） -->
+        <div class="factory-section">
+            <div class="section-title">
+                <span>🏭 工厂/设备</span>
+                <button class="btn btn-primary btn-sm" id="addFactoryBtn">+ 添加</button>
+            </div>
+            <div class="factory-list" id="factoryList"></div>
+            <div class="btn-group">
+                <button class="btn btn-danger btn-sm" id="deleteFactoryBtn">🗑 删除</button>
+                <button class="btn btn-sm" id="resetFactoryBtn">↻ 重置</button>
+                <button class="btn btn-primary btn-sm" id="saveFactoryBtn">💾 保存</button>
+            </div>
+        </div>
+
+        <!-- 输入参数（已移除待机开关） -->
+        <div class="param-group">
+            <div class="group-title">⚙️ 输入参数 (手动调节)</div>
+            <div class="param-row">
+                <label title="室外环境温度">室外温度 <span class="info-icon">ⓘ</span></label>
+                <input type="range" id="outTemp" min="15" max="35" step="0.1" value="28.4">
+                <input type="number" id="outTempNum" value="28.4" step="0.1" min="15" max="35">
+                <span class="text-muted">°C</span>
+            </div>
+            <div class="param-row">
+                <label title="室外环境相对湿度">室外湿度 <span class="info-icon">ⓘ</span></label>
+                <input type="range" id="outHum" min="30" max="85" step="0.5" value="65.0">
+                <input type="number" id="outHumNum" value="65.0" step="0.5" min="30" max="85">
+                <span class="text-muted">%RH</span>
+            </div>
+            <div class="param-row">
+                <label title="喷漆室实际干球温度">喷漆室温度 <span class="info-icon">ⓘ</span></label>
+                <input type="range" id="roomTemp" min="20" max="25" step="0.1" value="22.9">
+                <input type="number" id="roomTempNum" value="22.9" step="0.1" min="20" max="25">
+                <span class="text-muted">°C</span>
+            </div>
+            <div class="param-row">
+                <label title="喷漆室实际相对湿度">喷漆室湿度 <span class="info-icon">ⓘ</span></label>
+                <input type="range" id="roomHum" min="50" max="75" step="0.5" value="64.2">
+                <input type="number" id="roomHumNum" value="64.2" step="0.5" min="50" max="75">
+                <span class="text-muted">%RH</span>
+            </div>
+            <div class="param-row">
+                <label title="在制品数量，决定生产负荷">在制品 WIP <span class="info-icon">ⓘ</span></label>
+                <input type="range" id="wip" min="0" max="200" step="1" value="128">
+                <input type="number" id="wipNum" value="128" step="1" min="0" max="200">
+                <span class="text-muted">件</span>
+            </div>
+            <div class="param-row">
+                <label title="产线排空数量，反映停台趋势">排空数量 <span class="info-icon">ⓘ</span></label>
+                <input type="range" id="empty" min="0" max="40" step="1" value="12">
+                <input type="number" id="emptyNum" value="12" step="1" min="0" max="40">
+                <span class="text-muted">件</span>
+            </div>
+            <div class="param-row" style="margin-bottom:0;">
+                <label title="系统预测的剩余生产时间">停台预测 <span class="info-icon">ⓘ</span></label>
+                <input type="range" id="stopPred" min="0" max="60" step="1" value="35">
+                <input type="number" id="stopPredNum" value="35" step="1" min="0" max="60">
+                <span class="text-muted">min</span>
+            </div>
+            <!-- 待机开关已移除 -->
+        </div>
+
+        <div class="info-box">
+            <strong>📖 术语解释：</strong><br>
+            <strong>°C/步</strong>：预测每步调节温度变化量（正值=升温，负值=降温）。<br>
+            <strong>死区</strong>：系统不主动调节的容忍区间，用于节能减耗。
+        </div>
+    </div>
+
+    <!-- 右侧主区域 -->
+    <div class="main">
+        <div class="top-row">
+            <div class="card">
+                <div class="card-title">
+                    <span>📊 自适应引擎输出</span>
+                    <span id="modePill" class="tag tag-green">生产模式</span>
+                </div>
+                <div class="output-grid">
+                    <div class="output-item">
+                        <div class="label">🔥 加热</div>
+                        <div class="value" id="heatOut">35<span class="unit">%</span></div>
+                        <div class="progress"><div class="progress-fill" id="heatBar" style="width:35%; background:#ef4444;"></div></div>
+                    </div>
+                    <div class="output-item">
+                        <div class="label">❄️ 制冷</div>
+                        <div class="value" id="coolOut">20<span class="unit">%</span></div>
+                        <div class="progress"><div class="progress-fill" id="coolBar" style="width:20%; background:#3b82f6;"></div></div>
+                    </div>
+                    <div class="output-item">
+                        <div class="label">💧 加湿</div>
+                        <div class="value" id="humidOut">68<span class="unit">%</span></div>
+                        <div class="progress"><div class="progress-fill" id="humidBar" style="width:68%; background:#8b5cf6;"></div></div>
+                    </div>
+                    <div class="output-item">
+                        <div class="label">🌬️ 风机频率</div>
+                        <div class="value" id="fanFreq">45.0<span class="unit">Hz</span></div>
+                        <div class="progress"><div class="progress-fill" id="fanBar" style="width:90%; background:#38bdf8;"></div></div>
+                    </div>
+                </div>
+                <div class="flex mt-2">
+                    <span class="text-muted">控制策略：</span>
+                    <span id="strategyText" class="tag tag-green">自由控制</span>
+                    <span class="text-muted" style="margin-left:auto;">瞬时能耗：<strong id="powerNow">78.4</strong> kW</span>
+                </div>
+                <div class="flex mt-2">
+                    <span class="text-muted">含湿量 d = </span>
+                    <strong id="airMoistureDisplay" style="color:#60a5fa;">12.36</strong>
+                    <span class="text-muted">g/kg</span>
+                    <span class="text-muted" style="margin-left:auto; cursor:help;" title="当前加湿/加热耦合作用下，预测每步温度变化值">温降预测：<span id="dropPred" class="tag tag-yellow">-0.2°C/步</span></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span>🧠 决策逻辑 (实时判定)</span>
+                    <span id="decisionResult" class="dt-result">生产</span>
+                </div>
+                <div class="decision-tree" id="decisionTree">
+                    <span class="dt-node">WIP: <span id="dWip">128</span></span>
+                    <span class="dt-arrow">→</span>
+                    <span class="dt-node">排空: <span id="dEmpty">低</span></span>
+                    <span class="dt-arrow">→</span>
+                    <span class="dt-node">预测: <span id="dPred">>15min</span></span>
+                    <span class="dt-arrow">→</span>
+                    <span class="dt-result" id="dResult">生产</span>
+                </div>
+                <div style="margin-top:12px;">
+                    <div class="text-muted" style="font-size:12px;">📋 最近事件</div>
+                    <ul class="event-log" id="eventLog">
+                        <li>🟢 系统启动</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-row">
+            <div class="card" style="padding:14px;">
+                <div class="card-title" style="margin-bottom:4px;">🌡️ 焓湿图 (温度-含湿量) <span style="font-weight:400; font-size:11px; color:#475569;">🟢目标  🟡当前</span></div>
+                <div class="chart-container">
+                    <canvas id="psychroChart" width="500" height="200"></canvas>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:#475569; padding:0 6px;">
+                    <span>温度 (℃)</span>
+                    <span>含湿量 (g/kg) ↑</span>
+                    <span style="cursor:help;" title="当前喷漆室状态点与目标点的偏差连线">偏差矢量</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">
+                    <span>📏 控制边界 (死区)</span>
+                    <span style="font-weight:400; font-size:11px; color:#475569; cursor:help;" title="系统不主动调节的容忍区间，用于节能减耗">ⓘ</span>
+                </div>
+                <div class="boundary-item">
+                    <span class="label">🌡️ 温度死区</span>
+                    <span class="value" id="tempDead">±0.5 °C</span>
+                </div>
+                <div class="boundary-item">
+                    <span class="label">💧 湿度死区</span>
+                    <span class="value" id="humidDead">±3.0 %RH</span>
+                </div>
+                <div class="boundary-item">
+                    <span class="label">📌 当前模式</span>
+                    <span id="currentModeText" class="tag tag-green" style="font-size:13px;">生产</span>
+                </div>
+                <div class="boundary-item">
+                    <span class="label">⏳ 待机时长</span>
+                    <span class="value" id="standbyDuration">0 min</span>
+                </div>
+                <div class="info-box" style="margin-top:12px; border-left-color:#3b82f6; font-size:12px;">
+                    💡 <strong>死区解释</strong>：在死区内不主动调节，避免设备频繁启停。待机时死区自动放宽，大幅节能。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // 核心数据模型
+    // ============================================================
+    const DEFAULT_FACTORY = {
+        id: 'factory_1',
+        name: '工厂A - 喷漆车间',
+        params: {
+            outTemp: 28.4,
+            outHum: 65.0,
+            roomTemp: 22.9,
+            roomHum: 64.2,
+            wip: 128,
+            empty: 12,
+            stopPred: 35,
+            forceStandby: false
+        }
+    };
+
+    let factories = [];
+    let currentFactoryId = null;
+    let eventLogs = {};
+
+    function loadData() {
+        const saved = localStorage.getItem('adaptive_factories_v2');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                factories = data.factories || [];
+                currentFactoryId = data.currentId || (factories.length > 0 ? factories[0].id : null);
+                eventLogs = data.eventLogs || {};
+                if (factories.length === 0) initDefault();
+            } catch (e) { initDefault(); }
+        } else { initDefault(); }
+        if (currentFactoryId && !factories.find(f => f.id === currentFactoryId)) {
+            currentFactoryId = factories.length > 0 ? factories[0].id : null;
+        }
+        if (!currentFactoryId && factories.length > 0) currentFactoryId = factories[0].id;
+        if (factories.length === 0) initDefault();
+        saveData();
+    }
+
+    function initDefault() {
+        const defaultFac = { ...DEFAULT_FACTORY, id: 'factory_' + Date.now() };
+        factories = [defaultFac];
+        currentFactoryId = defaultFac.id;
+        eventLogs[defaultFac.id] = ['🟢 系统启动，默认配置'];
+    }
+
+    function saveData() {
+        localStorage.setItem('adaptive_factories_v2', JSON.stringify({
+            factories: factories,
+            currentId: currentFactoryId,
+            eventLogs: eventLogs
+        }));
+    }
+
+    function calcMoisture(temp, rh) {
+        const Pws = 0.6108 * Math.exp((17.27 * temp) / (temp + 237.3));
+        const Pw = Pws * (rh / 100);
+        return 0.622 * Pw / (101.325 - Pw) * 1000;
+    }
+
+    function determineMode(params) {
+        if (params.forceStandby) return { mode: 'standby', label: '强制待机' };
+        if (params.wip === 0) return { mode: 'standby', label: 'WIP为0' };
+        if (params.stopPred < 5 && params.stopPred > 0) return { mode: 'transition', label: '停台预测<5min' };
+        if (params.wip < 10) return { mode: 'transition', label: 'WIP过低' };
+        if (params.empty > 25) return { mode: 'transition', label: '排空率高' };
+        return { mode: 'production', label: '正常生产' };
+    }
+
+    function computeOutputs(params) {
+        const decision = determineMode(params);
+        const mode = decision.mode;
+        let heat, cool, humid, fan, tempDead, humidDead, strategy;
+        const targetTemp = 23.0, targetHum = 65.0;
+
+        if (mode === 'production') {
+            tempDead = 0.5; humidDead = 3.0; fan = 45;
+            strategy = '自由控制 (PID)';
+            heat = 30 + (targetTemp - params.roomTemp) * 10;
+            cool = 15 + (params.roomTemp - targetTemp) * 8;
+            humid = 60 + (targetHum - params.roomHum) * 1.5;
+        } else if (mode === 'transition') {
+            tempDead = 1.8; humidDead = 7.0; fan = 36;
+            strategy = '过渡模式 (边界放宽)';
+            heat = 20; cool = 10; humid = 25;
+        } else {
+            tempDead = 3.5; humidDead = 12.0; fan = 22;
+            strategy = '待机节能 (宽边界)';
+            heat = 8; cool = 3; humid = 3;
+        }
+        heat = Math.min(100, Math.max(0, heat));
+        cool = Math.min(100, Math.max(0, cool));
+        humid = Math.min(100, Math.max(0, humid));
+        fan = Math.min(50, Math.max(15, fan));
+        const power = 50 + heat * 0.25 + cool * 0.2 + humid * 0.15 + fan * 0.5;
+        const d = calcMoisture(params.roomTemp, params.roomHum);
+        const drop = (humid / 100) * 0.6 - 0.1;
+        return { heat, cool, humid, fan, tempDead, humidDead, strategy, mode, power, d, decision, drop };
+    }
+
+    function getCurrentFactory() {
+        return factories.find(f => f.id === currentFactoryId);
+    }
+
+    function addEvent(factoryId, msg) {
+        if (!eventLogs[factoryId]) eventLogs[factoryId] = [];
+        eventLogs[factoryId].push(msg);
+        if (eventLogs[factoryId].length > 50) eventLogs[factoryId].shift();
+        saveData();
+    }
+
+    // ============================================================
+    // 渲染
+    // ============================================================
+    function renderFactoryList() {
+        const container = document.getElementById('factoryList');
+        container.innerHTML = '';
+        factories.forEach(f => {
+            const div = document.createElement('div');
+            div.className = 'factory-item' + (f.id === currentFactoryId ? ' active' : '');
+            div.innerHTML = `<span class="name">${f.name}</span><span class="badge">${f.params.wip}件</span>`;
+            div.addEventListener('click', () => {
+                currentFactoryId = f.id;
+                renderAll();
+            });
+            container.appendChild(div);
+        });
+    }
+
+    function renderAll() {
+        const factory = getCurrentFactory();
+        if (!factory) return;
+        const p = factory.params;
+
+        // 同步左侧滑块
+        document.getElementById('outTemp').value = p.outTemp;
+        document.getElementById('outTempNum').value = p.outTemp;
+        document.getElementById('outHum').value = p.outHum;
+        document.getElementById('outHumNum').value = p.outHum;
+        document.getElementById('roomTemp').value = p.roomTemp;
+        document.getElementById('roomTempNum').value = p.roomTemp;
+        document.getElementById('roomHum').value = p.roomHum;
+        document.getElementById('roomHumNum').value = p.roomHum;
+        document.getElementById('wip').value = p.wip;
+        document.getElementById('wipNum').value = p.wip;
+        document.getElementById('empty').value = p.empty;
+        document.getElementById('emptyNum').value = p.empty;
+        document.getElementById('stopPred').value = p.stopPred;
+        document.getElementById('stopPredNum').value = p.stopPred;
+
+        // 计算输出
+        const out = computeOutputs(p);
+
+        // 更新输出卡片
+        document.getElementById('heatOut').innerHTML = Math.round(out.heat) + '<span class="unit">%</span>';
+        document.getElementById('heatBar').style.width = out.heat + '%';
+        document.getElementById('coolOut').innerHTML = Math.round(out.cool) + '<span class="unit">%</span>';
+        document.getElementById('coolBar').style.width = out.cool + '%';
+        document.getElementById('humidOut').innerHTML = Math.round(out.humid) + '<span class="unit">%</span>';
+        document.getElementById('humidBar').style.width = out.humid + '%';
+        document.getElementById('fanFreq').innerHTML = out.fan.toFixed(1) + '<span class="unit">Hz</span>';
+        document.getElementById('fanBar').style.width = (out.fan / 50 * 100) + '%';
+        document.getElementById('powerNow').textContent = out.power.toFixed(1);
+        document.getElementById('airMoistureDisplay').textContent = out.d.toFixed(2);
+        document.getElementById('dropPred').textContent = (out.drop > 0 ? '+' : '') + out.drop.toFixed(2) + '°C/步';
+
+        // 策略与模式
+        document.getElementById('strategyText').textContent = out.strategy;
+        document.getElementById('strategyText').className = 'tag ' + (out.mode === 'production' ? 'tag-green' : (out.mode === 'transition' ? 'tag-yellow' : 'tag-red'));
+
+        const modePill = document.getElementById('modePill');
+        if (out.mode === 'production') { modePill.textContent = '生产模式'; modePill.className = 'tag tag-green'; }
+        else if (out.mode === 'transition') { modePill.textContent = '过渡模式'; modePill.className = 'tag tag-yellow'; }
+        else { modePill.textContent = '待机模式'; modePill.className = 'tag tag-red'; }
+
+        // 更新顶部状态栏
+        const statusBadge = document.getElementById('statusBadge');
+        if (out.mode === 'production') {
+            statusBadge.textContent = '正常生产';
+            statusBadge.className = 'mode-badge';
+        } else if (out.mode === 'transition') {
+            statusBadge.textContent = '过渡模式';
+            statusBadge.className = 'mode-badge transition';
+        } else {
+            statusBadge.textContent = '产线停台 / 待机';
+            statusBadge.className = 'mode-badge standby';
+        }
+
+        // 控制边界
+        document.getElementById('currentModeText').textContent = out.mode === 'production' ? '生产' : (out.mode === 'transition' ? '过渡' : '待机');
+        document.getElementById('currentModeText').className = 'tag ' + (out.mode === 'production' ? 'tag-green' : (out.mode === 'transition' ? 'tag-yellow' : 'tag-red'));
+
+        document.getElementById('tempDead').textContent = '±' + out.tempDead.toFixed(1) + ' °C';
+        document.getElementById('humidDead').textContent = '±' + out.humidDead.toFixed(1) + ' %RH';
+        document.getElementById('standbyDuration').textContent = p.forceStandby ? '≥ 2 min' : '0 min';
+
+        // 决策树
+        document.getElementById('dWip').textContent = p.wip;
+        document.getElementById('dEmpty').textContent = p.empty > 20 ? '高' : '低';
+        const predText = p.stopPred > 15 ? '>15min' : (p.stopPred > 5 ? '5~15min' : '<5min');
+        document.getElementById('dPred').textContent = predText;
+        const resultEl = document.getElementById('dResult');
+        resultEl.textContent = out.mode === 'production' ? '生产' : (out.mode === 'transition' ? '过渡' : '停台');
+        resultEl.className = 'dt-result' + (out.mode === 'production' ? '' : ' standby');
+        document.getElementById('decisionResult').textContent = out.mode === 'production' ? '生产' : (out.mode === 'transition' ? '过渡' : '停台');
+        document.getElementById('decisionResult').className = 'dt-result' + (out.mode === 'production' ? '' : ' standby');
+
+        // 事件日志
+        const logContainer = document.getElementById('eventLog');
+        const logs = eventLogs[factory.id] || ['🟢 系统启动'];
+        logContainer.innerHTML = logs.slice(-5).map(e => `<li>${e}</li>`).join('');
+
+        // 焓湿图
+        drawPsychroChart(p.roomTemp, out.d);
+        renderFactoryList();
+        saveData();
+    }
+
+    // 焓湿图绘制
+    function drawPsychroChart(temp, d) {
+        const canvas = document.getElementById('psychroChart');
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        const pad = { top: 18, bottom: 25, left: 30, right: 15 };
+        const plotW = W - pad.left - pad.right;
+        const plotH = H - pad.top - pad.bottom;
+        const mapX = (t) => pad.left + ((t - 20) / 6) * plotW;
+        const mapY = (dVal) => pad.top + plotH - ((dVal - 8) / 10) * plotH;
+
+        ctx.strokeStyle = '#1a2a3a';
+        ctx.lineWidth = 0.5;
+        for (let t = 20; t <= 26; t += 1) {
+            ctx.beginPath(); ctx.moveTo(mapX(t), pad.top); ctx.lineTo(mapX(t), pad.top + plotH); ctx.stroke();
+            ctx.fillStyle = '#475569'; ctx.font = '8px sans-serif'; ctx.fillText(t, mapX(t) - 5, pad.top + plotH + 14);
+        }
+        for (let dVal = 8; dVal <= 18; dVal += 2) {
+            ctx.beginPath(); ctx.moveTo(pad.left, mapY(dVal)); ctx.lineTo(pad.left + plotW, mapY(dVal)); ctx.stroke();
+            ctx.fillStyle = '#475569'; ctx.fillText(dVal, 2, mapY(dVal) + 3);
+        }
+        ctx.fillStyle = '#64748b'; ctx.font = '8px sans-serif';
+        ctx.fillText('温度(℃)', pad.left + plotW / 2 - 16, H - 3);
+        ctx.save(); ctx.translate(10, pad.top + plotH / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('含湿量 g/kg', -18, 0); ctx.restore();
+
+        const targetD = calcMoisture(23, 65);
+        const tx = mapX(23), ty = mapY(targetD);
+        ctx.beginPath(); ctx.arc(tx, ty, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#4ade80'; ctx.shadowColor = '#4ade80'; ctx.shadowBlur = 8; ctx.fill(); ctx.shadowBlur = 0;
+        ctx.fillStyle = '#4ade80'; ctx.font = '9px sans-serif'; ctx.fillText('目标', tx + 6, ty - 4);
+
+        const curX = mapX(temp), curY = mapY(d);
+        ctx.beginPath(); ctx.arc(curX, curY, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = '#facc15'; ctx.shadowColor = '#facc15'; ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0;
+        ctx.fillStyle = '#facc15'; ctx.font = '9px sans-serif'; ctx.fillText('当前', curX + 6, curY - 4);
+
+        ctx.beginPath(); ctx.moveTo(curX, curY); ctx.lineTo(tx, ty);
+        ctx.strokeStyle = '#facc15'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // ============================================================
+    // 事件绑定
+    // ============================================================
+    function bindInputs() {
+        const ids = ['outTemp', 'outHum', 'roomTemp', 'roomHum', 'wip', 'empty', 'stopPred'];
+        ids.forEach(id => {
+            const range = document.getElementById(id);
+            const num = document.getElementById(id + 'Num');
+            if (range && num) {
+                range.addEventListener('input', () => {
+                    num.value = range.value;
+                    updateParams(id, parseFloat(range.value));
+                });
+                num.addEventListener('change', () => {
+                    let val = parseFloat(num.value);
+                    if (isNaN(val)) return;
+                    const min = parseFloat(num.min), max = parseFloat(num.max);
+                    if (!isNaN(min) && val < min) val = min;
+                    if (!isNaN(max) && val > max) val = max;
+                    num.value = val; range.value = val;
+                    updateParams(id, val);
+                });
+            }
+        });
+    }
+
+    function updateParams(key, value) {
+        const factory = getCurrentFactory();
+        if (!factory) return;
+        const map = { outTemp: 'outTemp', outHum: 'outHum', roomTemp: 'roomTemp', roomHum: 'roomHum', wip: 'wip', empty: 'empty', stopPred: 'stopPred' };
+        const paramKey = map[key];
+        if (paramKey) {
+            factory.params[paramKey] = value;
+            addEvent(factory.id, `✏️ 修改 ${key} = ${value}`);
+            renderAll();
+        }
+    }
+
+    // ===== 顶部按钮事件 =====
+    document.getElementById('forceStandbyBtn').addEventListener('click', function() {
+        const factory = getCurrentFactory();
+        if (!factory) return;
+        factory.params.forceStandby = true;
+        factory.params.wip = 0;
+        factory.params.stopPred = 0;
+        addEvent(factory.id, '⛔ 强制待机开启');
+        renderAll();
+    });
+
+    document.getElementById('resetProductionBtn').addEventListener('click', function() {
+        const factory = getCurrentFactory();
+        if (!factory) return;
+        factory.params.forceStandby = false;
+        factory.params.wip = 100 + Math.floor(Math.random() * 50);
+        factory.params.stopPred = 30 + Math.random() * 15;
+        addEvent(factory.id, '▶ 恢复生产');
+        renderAll();
+    });
+
+    // ===== 侧边栏按钮事件 =====
+    document.getElementById('addFactoryBtn').addEventListener('click', function() {
+        const name = prompt('请输入新工厂/设备名称：', '工厂' + (factories.length + 1));
+        if (!name) return;
+        const newFac = { id: 'factory_' + Date.now(), name: name, params: { ...DEFAULT_FACTORY.params } };
+        factories.push(newFac);
+        currentFactoryId = newFac.id;
+        eventLogs[newFac.id] = ['🟢 新建工厂配置'];
+        renderAll();
+        addEvent(newFac.id, '🏭 工厂创建');
+    });
+
+    document.getElementById('deleteFactoryBtn').addEventListener('click', function() {
+        if (factories.length <= 1) { alert('至少保留一个工厂配置。'); return; }
+        if (!confirm('确定删除当前工厂吗？')) return;
+        const idx = factories.findIndex(f => f.id === currentFactoryId);
+        if (idx !== -1) {
+            factories.splice(idx, 1);
+            delete eventLogs[currentFactoryId];
+            currentFactoryId = factories[0].id;
+            renderAll();
+        }
+    });
+
+    document.getElementById('resetFactoryBtn').addEventListener('click', function() {
+        const factory = getCurrentFactory();
+        if (!factory) return;
+        if (!confirm('重置当前工厂参数为默认值？')) return;
+        factory.params = { ...DEFAULT_FACTORY.params };
+        addEvent(factory.id, '↻ 参数重置为默认');
+        renderAll();
+    });
+
+    document.getElementById('saveFactoryBtn').addEventListener('click', function() {
+        saveData();
+        alert('✅ 当前配置已保存到浏览器本地！');
+    });
+
+    // ===== 时钟 =====
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('headerClock').textContent = now.toTimeString().slice(0, 8);
+    }
+
+    // ============================================================
+    // 初始化
+    // ============================================================
+    loadData();
+    bindInputs();
+    renderAll();
+    updateClock();
+    setInterval(() => {
+        updateClock();
+        saveData();
+    }, 5000);
+</script>
+</body>
+</html>
