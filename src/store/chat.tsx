@@ -1,12 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useChatStore } from "./chatStore";
 import { chatWithDeepSeek } from "../api/deepseek";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 function Chat() {
-  const { messages, isLoading, addMessage, setLoading, clearMessages } =
-    useChatStore();
+  const { messages, isLoading, addMessage, setLoading } = useChatStore();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -73,7 +72,6 @@ function Chat() {
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: 20 }}>
       <h1 style={{ textAlign: "center" }}>🤖 AI 聊天室</h1>
-
       <div
         style={{
           height: "60vh",
