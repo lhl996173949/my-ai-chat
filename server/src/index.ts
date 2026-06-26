@@ -91,7 +91,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
 // 检索相似文档
 app.post('/api/search', async (req, res) => {
-    const { query, limit = 5 } = req.body
+    const { query, limit = 5 } = req.body as { query?: string; limit?: number }
 
     if (!query) {
         return res.status(400).json({ error: '请输入查询内容' })
@@ -100,6 +100,9 @@ app.post('/api/search', async (req, res) => {
     try {
         // 将查询向量化
         const [queryEmbedding] = await embedTexts([query])
+
+        // 格式化为 pgvector 可接受的字符串格式
+        const vectorStr = '[' + queryEmbedding.join(',') + ']'
 
         // 在数据库中检索最相似的文档
         const client = await pool.connect()
@@ -110,7 +113,7 @@ app.post('/api/search', async (req, res) => {
          FROM documents
          ORDER BY embedding <=> $1::vector
          LIMIT $2`,
-                [queryEmbedding, limit]
+                [vectorStr, limit]  // 传入字符串格式
             )
 
             res.json({

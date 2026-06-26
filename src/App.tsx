@@ -4,12 +4,14 @@
 // import heroImg from "./assets/hero.png";
 import "./App.css";
 import Chat from "./store/chat";
+import ChatWithRAG from "./store/chatWithRAG";
 
 function App() {
   // const [count, setCount] = useState(0);
 
   return (
-    <Chat />
+    // <Chat />
+    <ChatWithRAG />
     // <>
     //   <section id="center">
     //     <div className="hero">

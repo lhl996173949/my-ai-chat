@@ -1,4 +1,5 @@
-import fs from 'fs'
+// import fs from 'fs'
+import PDFParser from 'pdf2json'
 // 使用 createRequire 来加载 CommonJS 模块
 // import { createRequire } from 'module'
 // const require = createRequire(import.meta.url)
@@ -8,25 +9,61 @@ import fs from 'fs'
 
 // import zlib from 'zlib'
 
-export async function readPDF(filePath: string): Promise<string> {
-    const dataBuffer = fs.readFileSync(filePath)
-    const content = dataBuffer.toString('utf-8')
+// export async function readPDF(filePath: string): Promise<string> {
+//     const dataBuffer = fs.readFileSync(filePath)
+//     const content = dataBuffer.toString('utf-8')
 
-    // 提取 PDF 中的文本内容（正则匹配）
-    const textMatches = content.match(/\((.*?)\)/g) || []
-    const extractedText = textMatches
-        .map(match => match.slice(1, -1))
-        .filter(text => text.length > 2)
-        .join(' ')
+//     // 提取 PDF 中的文本内容（正则匹配）
+//     const textMatches = content.match(/\((.*?)\)/g) || []
+//     const extractedText = textMatches
+//         .map(match => match.slice(1, -1))
+//         .filter(text => text.length > 2)
+//         .join(' ')
 
-    return extractedText || '未能提取到文本内容'
-}
+//     return extractedText || '未能提取到文本内容'
+// }
 
 // export async function readPDF(filePath: string): Promise<string> {
 //     const dataBuffer = fs.readFileSync(filePath)
+//     // 动态导入 pdf-parse
+//     const pdfParseModule = await import('pdf-parse')
+//     const pdfParse = pdfParseModule.default || pdfParseModule
+
 //     const data = await pdfParse(dataBuffer)
 //     return data.text
 // }
+
+export async function readPDF(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const pdfParser = new PDFParser(null, true)
+
+        pdfParser.on('pdfParser_dataReady', (pdfData: { Pages: Array<{ Texts: Array<{ R: Array<{ T: string }> }> }> }) => {
+            try {
+                let fullText = ''
+
+                for (const page of pdfData.Pages) {
+                    for (const textItem of page.Texts) {
+                        const decodedText = decodeURIComponent(textItem.R.map((r: { T: string }) => r.T).join(''))
+                        fullText += decodedText + ' '
+                    }
+                    fullText += '\n'
+                }
+
+                resolve(fullText.trim())
+            } catch (error) {
+                reject(error)
+            }
+        })
+
+        pdfParser.on('pdfParser_dataError', (errMsg: Error | { parserError: Error }) => {
+            // 统一转为 Error 类型
+            const error = errMsg instanceof Error ? errMsg : errMsg.parserError
+            reject(error)
+        })
+
+        pdfParser.loadPDF(filePath)
+    })
+}
 
 export async function splitText(text: string): Promise<string[]> {
     const chunks: string[] = []
